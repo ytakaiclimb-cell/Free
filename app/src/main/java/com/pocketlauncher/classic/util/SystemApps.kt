@@ -6,13 +6,10 @@ import android.content.Intent
 import android.provider.AlarmClock
 import android.provider.Settings
 
-/** Opening the stock apps that the launcher itself links to. */
+/** Opening the stock apps and system screens the launcher links to. */
 object SystemApps {
 
-    /**
-     * Clock packages in preference order. Samsung first, because that is what a
-     * Galaxy Z Fold ships with; then Google's and AOSP's.
-     */
+    /** Clock packages in preference order: Samsung first, then Google, then AOSP. */
     private val CLOCK_PACKAGES = listOf(
         "com.sec.android.app.clockpackage",
         "com.google.android.deskclock",
@@ -22,27 +19,39 @@ object SystemApps {
     )
 
     /**
-     * Opens the device clock app. Falls back to the generic "show alarms" intent
-     * when none of the known packages is installed.
-     *
-     * @return true when something was actually opened.
+     * Opens the device clock app, falling back to the generic "show alarms"
+     * intent when none of the known packages is installed.
      */
     fun openClock(context: Context): Boolean {
-        val pm = context.packageManager
-        val direct = CLOCK_PACKAGES.firstNotNullOfOrNull { pm.getLaunchIntentForPackage(it) }
+        val direct = CLOCK_PACKAGES.firstNotNullOfOrNull {
+            context.packageManager.getLaunchIntentForPackage(it)
+        }
         val intent = direct ?: Intent(AlarmClock.ACTION_SHOW_ALARMS)
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        return start(context, intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    /** Starts a countdown of [minutes] in the device clock app. */
+    fun startTimer(context: Context, minutes: Int): Boolean {
+        val intent = Intent(AlarmClock.ACTION_SET_TIMER)
+            .putExtra(AlarmClock.EXTRA_LENGTH, minutes * 60)
+            .putExtra(AlarmClock.EXTRA_MESSAGE, "${minutes}分")
+            .putExtra(AlarmClock.EXTRA_SKIP_UI, false)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         return start(context, intent)
     }
 
-    fun openSettings(context: Context): Boolean {
-        val intent = Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        return start(context, intent)
-    }
+    fun openSettings(context: Context): Boolean =
+        start(context, Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 
-    /** Opens the system screen where the default home app is chosen. */
-    fun openHomeSettings(context: Context): Boolean {
-        val intent = Intent(Settings.ACTION_HOME_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    /** The system screen where this launcher is made the default home app. */
+    fun openHomeSettings(context: Context): Boolean =
+        start(context, Intent(Settings.ACTION_HOME_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) ||
+            openSettings(context)
+
+    /** The system screen that grants notification access, for the fader badges. */
+    fun openNotificationAccess(context: Context): Boolean {
+        val intent = Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         return start(context, intent) || openSettings(context)
     }
 

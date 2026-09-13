@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="bezel">#FFE9EAEE</color>
-    <color name="ic_launcher_background">#FFE9EAEE</color>
+    <color name="bezel">#FFF1F0EC</color>
+    <color name="ic_launcher_background">#FFF1F0EC</color>
 </resources>

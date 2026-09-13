@@ -20,7 +20,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Drops out of clock mode when coming back from the clock app.
+        // Drops back to the home ring when returning from the clock app.
         state.onResumed()
     }
 }

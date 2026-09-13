@@ -62,6 +62,22 @@ class AppRepository(private val context: Context) {
         }.getOrNull()
     }
 
+    /** Finds a loaded app by its [AppEntry.key]. */
+    fun byKey(key: String?): AppEntry? =
+        if (key == null) null else apps().firstOrNull { it.key == key }
+
+    /** Best-effort lookup by visible name, used for the "Y" shortcut. */
+    fun byLabel(vararg candidates: String): AppEntry? {
+        val loaded = apps()
+        for (candidate in candidates) {
+            loaded.firstOrNull { it.label.equals(candidate, ignoreCase = true) }?.let { return it }
+        }
+        for (candidate in candidates) {
+            loaded.firstOrNull { it.label.contains(candidate, ignoreCase = true) }?.let { return it }
+        }
+        return null
+    }
+
     fun launch(entry: AppEntry) {
         val intent = Intent(Intent.ACTION_MAIN)
             .addCategory(Intent.CATEGORY_LAUNCHER)
