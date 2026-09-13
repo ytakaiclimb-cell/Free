@@ -10,7 +10,10 @@ class LayoutStore(context: Context) {
 
     private val store = context.getSharedPreferences("mpc", Context.MODE_PRIVATE)
 
-    fun load(form: FormFactor): Layout? = layoutFromJson(store.getString(form.key, null) ?: return null)
+    fun load(form: FormFactor): Layout? {
+        val raw = store.getString(form.key, null) ?: return null
+        return layoutFromJson(raw)
+    }
 
     fun save(form: FormFactor, layout: Layout) {
         store.edit().putString(form.key, layout.toJson()).apply()
