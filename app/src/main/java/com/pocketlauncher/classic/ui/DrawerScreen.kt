@@ -92,7 +92,7 @@ fun DrawerScreen(state: LauncherState, modifier: Modifier = Modifier) {
 
         BasicTextField(
             value = state.query,
-            onValueChange = state::setQuery,
+            onValueChange = state::updateQuery,
             singleLine = true,
             textStyle = TextStyle(color = skin.text, fontSize = 21.sp),
             cursorBrush = SolidColor(skin.accent),

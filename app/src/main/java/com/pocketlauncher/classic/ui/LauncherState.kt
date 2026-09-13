@@ -238,7 +238,7 @@ class LauncherState(context: Context) {
         if (screen == Screen.DRAWER) goHome()
     }
 
-    fun setQuery(value: String) {
+    fun updateQuery(value: String) {
         query = value
         drawerIndex = 0
     }
