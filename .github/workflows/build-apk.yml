@@ -16,6 +16,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
 
     steps:
       - name: Checkout
@@ -27,6 +28,17 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          log-accepted-android-sdk-licenses: false
+
+      - name: Install SDK packages
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "platform-tools" < /dev/null
+          sdkmanager --list_installed < /dev/null | head -30
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
@@ -36,7 +48,7 @@ jobs:
           VERSION_NAME: 0.1.${{ github.run_number }}
         run: |
           chmod +x ./gradlew
-          ./gradlew --no-daemon assembleDebug
+          ./gradlew --no-daemon --console=plain --stacktrace assembleDebug < /dev/null
 
       - name: Collect APK
         run: |
