@@ -1,11 +1,13 @@
-package com.pocketlauncher.classic
+package com.mpc.launcher
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.pocketlauncher.classic.ui.ClassicApp
-import com.pocketlauncher.classic.ui.LauncherState
+import com.mpc.launcher.ui.LauncherScreen
+import com.mpc.launcher.ui.LauncherState
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -15,12 +17,18 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         state = LauncherState(this)
-        setContent { ClassicApp(state) }
+        lifecycleScope.launch { state.runTicker() }
+        setContent { LauncherScreen(state) }
     }
 
     override fun onResume() {
         super.onResume()
-        // Drops back to the home ring when returning from the clock app.
         state.onResumed()
+    }
+
+    /** Pressing HOME while already home closes whatever is open. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        state.dismissTop()
     }
 }

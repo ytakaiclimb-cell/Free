@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "PocketClassic"
+rootProject.name = "MPC"
 include(":app")

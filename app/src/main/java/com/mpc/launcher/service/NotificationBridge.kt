@@ -1,13 +1,14 @@
-package com.pocketlauncher.classic.service
+package com.mpc.launcher.service
 
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 
 /**
- * Feeds [Badges]. Android only binds this once the user turns on notification
- * access, so the launcher must work fine without it.
+ * Feeds [Badges] and gives the media module a component to authenticate with
+ * when it asks for active sessions. Android binds it only once the user turns
+ * on notification access, so everything downstream degrades quietly.
  */
-class BadgeListener : NotificationListenerService() {
+class NotificationBridge : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
@@ -19,13 +20,9 @@ class BadgeListener : NotificationListenerService() {
         Badges.publish(emptySet())
     }
 
-    override fun onNotificationPosted(sbn: StatusBarNotification?) {
-        publishCurrent()
-    }
+    override fun onNotificationPosted(sbn: StatusBarNotification?) = publishCurrent()
 
-    override fun onNotificationRemoved(sbn: StatusBarNotification?) {
-        publishCurrent()
-    }
+    override fun onNotificationRemoved(sbn: StatusBarNotification?) = publishCurrent()
 
     private fun publishCurrent() {
         val packages = runCatching {

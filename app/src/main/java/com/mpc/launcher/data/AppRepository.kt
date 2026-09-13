@@ -1,4 +1,4 @@
-package com.pocketlauncher.classic.data
+package com.mpc.launcher.data
 
 import android.content.ComponentName
 import android.content.Context
@@ -11,7 +11,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import java.text.Collator
 import java.util.Locale
 
-/** One launchable activity on the device. */
+/** One launchable activity on the device. [key] is what layouts store. */
 data class AppEntry(
     val label: String,
     val packageName: String,
@@ -20,18 +20,19 @@ data class AppEntry(
     val key: String get() = "$packageName/$className"
 }
 
-/**
- * Reads the list of launchable apps and starts them.
- * Labels and icons are cached because the click wheel re-reads them on every frame.
- */
+/** Reads the installed apps, caches their icons, and starts them. */
 class AppRepository(private val context: Context) {
 
     private var cached: List<AppEntry>? = null
+    private val byKey = HashMap<String, AppEntry>()
     private val iconCache = HashMap<String, ImageBitmap?>()
 
-    fun apps(): List<AppEntry> = cached ?: load().also { cached = it }
+    fun apps(): List<AppEntry> = cached ?: load().also { loaded ->
+        cached = loaded
+        byKey.clear()
+        loaded.forEach { byKey[it.key] = it }
+    }
 
-    /** Drops the cache so a newly installed app shows up. */
     fun refresh() {
         cached = null
         iconCache.clear()
@@ -39,9 +40,9 @@ class AppRepository(private val context: Context) {
 
     private fun load(): List<AppEntry> {
         val pm = context.packageManager
-        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        val main = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         val collator = Collator.getInstance(Locale.JAPAN)
-        return pm.queryIntentActivities(intent, 0)
+        return pm.queryIntentActivities(main, 0)
             .mapNotNull { resolved ->
                 val activity = resolved.activityInfo ?: return@mapNotNull null
                 if (activity.packageName == context.packageName) return@mapNotNull null
@@ -54,28 +55,37 @@ class AppRepository(private val context: Context) {
             .sortedWith(Comparator { a, b -> collator.compare(a.label, b.label) })
     }
 
+    fun byKey(key: String?): AppEntry? {
+        if (key == null) return null
+        apps()
+        return byKey[key]
+    }
+
+    /** First installed app among [packages], in the order given. */
+    fun byPackage(vararg packages: String): AppEntry? {
+        val loaded = apps()
+        for (name in packages) {
+            loaded.firstOrNull { it.packageName == name }?.let { return it }
+        }
+        return null
+    }
+
+    /** Resolves whatever handles the still-image camera intent. */
+    fun cameraApp(): AppEntry? {
+        val intent = Intent("android.media.action.STILL_IMAGE_CAMERA")
+        val resolved = context.packageManager.queryIntentActivities(intent, 0).firstOrNull()
+            ?: return null
+        val activity = resolved.activityInfo ?: return null
+        return byPackage(activity.packageName)
+            ?: AppEntry(resolved.loadLabel(context.packageManager).toString(), activity.packageName, activity.name)
+    }
+
     fun icon(entry: AppEntry): ImageBitmap? = iconCache.getOrPut(entry.key) {
         runCatching {
             context.packageManager
                 .getActivityIcon(ComponentName(entry.packageName, entry.className))
                 .toImageBitmap(ICON_PX)
         }.getOrNull()
-    }
-
-    /** Finds a loaded app by its [AppEntry.key]. */
-    fun byKey(key: String?): AppEntry? =
-        if (key == null) null else apps().firstOrNull { it.key == key }
-
-    /** Best-effort lookup by visible name, used for the "Y" shortcut. */
-    fun byLabel(vararg candidates: String): AppEntry? {
-        val loaded = apps()
-        for (candidate in candidates) {
-            loaded.firstOrNull { it.label.equals(candidate, ignoreCase = true) }?.let { return it }
-        }
-        for (candidate in candidates) {
-            loaded.firstOrNull { it.label.contains(candidate, ignoreCase = true) }?.let { return it }
-        }
-        return null
     }
 
     fun launch(entry: AppEntry) {
@@ -86,8 +96,12 @@ class AppRepository(private val context: Context) {
         runCatching { context.startActivity(intent) }
     }
 
+    fun launch(key: String?) {
+        byKey(key)?.let { launch(it) }
+    }
+
     private companion object {
-        const val ICON_PX = 144
+        const val ICON_PX = 168
     }
 }
 

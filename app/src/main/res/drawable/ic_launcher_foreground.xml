@@ -4,14 +4,9 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- click wheel ring -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FF3C4048"
-        android:strokeWidth="11"
-        android:pathData="M54,54 m-27,0 a27,27 0 1,0 54,0 a27,27 0 1,0 -54,0" />
-    <!-- centre button -->
-    <path
-        android:fillColor="#FF3C4048"
-        android:pathData="M54,54 m-10,0 a10,10 0 1,0 20,0 a10,10 0 1,0 -20,0" />
+    <!-- four pads, the bottom-right one lit -->
+    <path android:fillColor="#FF1A1A1C" android:pathData="M32,32h18a4,4 0 0 1 4,4v18a4,4 0 0 1 -4,4h-18a4,4 0 0 1 -4,-4v-18a4,4 0 0 1 4,-4z" />
+    <path android:fillColor="#FF1A1A1C" android:pathData="M58,32h18a4,4 0 0 1 4,4v18a4,4 0 0 1 -4,4h-18a4,4 0 0 1 -4,-4v-18a4,4 0 0 1 4,-4z" />
+    <path android:fillColor="#FF1A1A1C" android:pathData="M32,58h18a4,4 0 0 1 4,4v18a4,4 0 0 1 -4,4h-18a4,4 0 0 1 -4,-4v-18a4,4 0 0 1 4,-4z" />
+    <path android:fillColor="#FFE9653C" android:pathData="M58,58h18a4,4 0 0 1 4,4v18a4,4 0 0 1 -4,4h-18a4,4 0 0 1 -4,-4v-18a4,4 0 0 1 4,-4z" />
 </vector>

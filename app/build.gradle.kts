@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.pocketlauncher.classic"
+    namespace = "com.mpc.launcher"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.pocketlauncher.classic"
+        applicationId = "com.mpc.launcher"
         minSdk = 29
         targetSdk = 35
         // CI passes the run number so every build installs over the previous one.
