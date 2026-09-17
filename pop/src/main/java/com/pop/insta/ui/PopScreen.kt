@@ -261,7 +261,7 @@ private fun Controls(state: EditorState) {
                     subtitle = format.label,
                     selected = state.format == format,
                     modifier = Modifier.weight(1f),
-                ) { state.setFormat(format) }
+                ) { state.chooseFormat(format) }
             }
         }
 
@@ -273,7 +273,7 @@ private fun Controls(state: EditorState) {
                     subtitle = mode.hint,
                     selected = state.mode == mode,
                     modifier = Modifier.weight(1f),
-                ) { state.setMode(mode) }
+                ) { state.chooseMode(mode) }
             }
         }
 
@@ -290,7 +290,7 @@ private fun Controls(state: EditorState) {
                     fill = fill,
                     selected = state.backdrop == backdrop,
                     modifier = Modifier.weight(1f),
-                ) { state.setBackdrop(backdrop) }
+                ) { state.chooseBackdrop(backdrop) }
             }
         }
 
@@ -309,7 +309,7 @@ private fun Controls(state: EditorState) {
             )
             Slider(
                 value = state.margin,
-                onValueChange = { state.setMargin(it) },
+                onValueChange = { state.changeMargin(it) },
                 modifier = Modifier
                     .weight(1f)
                     .padding(horizontal = 10.dp),

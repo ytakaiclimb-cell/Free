@@ -105,24 +105,24 @@ class EditorState(
 
     // ---- composition -------------------------------------------------------
 
-    fun setFormat(next: PostFormat) {
+    fun chooseFormat(next: PostFormat) {
         if (next == format) return
         format = next
         layout = Layout()
         refreshBlurTile()
     }
 
-    fun setMode(next: FitMode) {
+    fun chooseMode(next: FitMode) {
         if (next == mode) return
         mode = next
         layout = Layout()
     }
 
-    fun setBackdrop(next: Backdrop) {
+    fun chooseBackdrop(next: Backdrop) {
         backdrop = next
     }
 
-    fun setMargin(next: Float) {
+    fun changeMargin(next: Float) {
         margin = next.coerceIn(0f, 0.2f)
         layout = normalized(layout)
     }
