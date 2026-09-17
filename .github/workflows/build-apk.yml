@@ -50,7 +50,15 @@ jobs:
           VERSION_NAME: 0.1.${{ github.run_number }}
         run: |
           chmod +x ./gradlew
-          ./gradlew --no-daemon --console=plain --stacktrace assembleDebug < /dev/null
+          set -o pipefail
+          if ! ./gradlew --no-daemon --console=plain assembleDebug < /dev/null 2>&1 | tee build.log; then
+            # Kotlin prints its errors long before the Gradle failure banner, so
+            # repeat them at the end where they are easy to find.
+            echo "::group::Compiler errors"
+            grep -E "^(e|w): " build.log | head -60 || true
+            echo "::endgroup::"
+            exit 1
+          fi
 
       - name: Collect APKs
         run: |

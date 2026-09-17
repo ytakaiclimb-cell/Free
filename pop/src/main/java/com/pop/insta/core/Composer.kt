@@ -48,9 +48,9 @@ object Composer {
         mode: FitMode,
     ): Layout {
         val zoom = layout.zoom.coerceIn(MIN_ZOOM, MAX_ZOOM)
-        val pad = pad(frameW, frameH, margin)
-        val innerW = max(1f, frameW - pad * 2f)
-        val innerH = max(1f, frameH - pad * 2f)
+        val inset = pad(frameW, frameH, margin)
+        val innerW = max(1f, frameW - inset * 2f)
+        val innerH = max(1f, frameH - inset * 2f)
         val base = baseScale(srcW, srcH, innerW, innerH, mode)
         val drawW = srcW * base * zoom
         val drawH = srcH * base * zoom
@@ -75,15 +75,15 @@ object Composer {
         mode: FitMode,
     ): Placement {
         val safe = normalize(layout, srcW, srcH, frameW, frameH, margin, mode)
-        val pad = pad(frameW, frameH, margin)
-        val innerW = max(1f, frameW - pad * 2f)
-        val innerH = max(1f, frameH - pad * 2f)
+        val inset = pad(frameW, frameH, margin)
+        val innerW = max(1f, frameW - inset * 2f)
+        val innerH = max(1f, frameH - inset * 2f)
         val base = baseScale(srcW, srcH, innerW, innerH, mode)
         val drawW = srcW * base * safe.zoom
         val drawH = srcH * base * safe.zoom
         return Placement(
-            left = pad + (innerW - drawW) / 2f + safe.offsetX * frameW,
-            top = pad + (innerH - drawH) / 2f + safe.offsetY * frameH,
+            left = inset + (innerW - drawW) / 2f + safe.offsetX * frameW,
+            top = inset + (innerH - drawH) / 2f + safe.offsetY * frameH,
             width = drawW,
             height = drawH,
         )
