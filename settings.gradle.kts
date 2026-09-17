@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "MPC"
 include(":app")
+include(":pop")

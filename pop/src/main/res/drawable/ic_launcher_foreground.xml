@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- An A4 sheet with the square crop laid over it. -->
+    <path android:fillColor="#FFF2F0E6" android:pathData="M37,27h34v54h-34z" />
+    <path android:fillColor="#FF1A1A1C" android:pathData="M43,35h22v5h-22z" />
+    <path android:fillColor="#FF1A1A1C" android:pathData="M43,45h22v3h-22z" />
+    <path android:fillColor="#FF1A1A1C" android:pathData="M43,52h14v3h-14z" />
+    <path
+        android:strokeColor="#FFE9653C"
+        android:strokeWidth="5"
+        android:fillColor="#00000000"
+        android:pathData="M33,33h42v42h-42z" />
+</vector>
