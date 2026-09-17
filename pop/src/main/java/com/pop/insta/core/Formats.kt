@@ -19,8 +19,8 @@ enum class PostFormat(
 
 /** What to do with A4 paper that does not match the frame. */
 enum class FitMode(val label: String, val hint: String) {
-    CONTAIN("全体を入れる", "POP を切らずに収めます"),
-    COVER("切り抜く", "枠いっぱいに広げます"),
+    CONTAIN("全体を入れる", "文字が切れない"),
+    COVER("切り抜く", "枠いっぱいに"),
 }
 
 /** What fills the space the POP does not cover. */

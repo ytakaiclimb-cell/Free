@@ -32,6 +32,10 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           log-accepted-android-sdk-licenses: false
+          # The action's default package list still asks for the retired
+          # "tools" package, which now fails the whole step. Everything this
+          # build needs is installed by hand below.
+          packages: ''
 
       - name: Install SDK packages
         run: |
