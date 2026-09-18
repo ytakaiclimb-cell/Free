@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pop.insta.BuildConfig
 import com.pop.insta.core.Backdrop
 import com.pop.insta.core.Composer
 import com.pop.insta.core.FitMode
@@ -144,7 +145,9 @@ private fun Header(state: EditorState, openPhoto: () -> Unit, openPdf: () -> Uni
                 letterSpacing = 2.sp,
             )
             Text(
-                text = state.notice ?: state.source?.name ?: "A4 の POP を投稿サイズに",
+                text = state.notice
+                    ?: state.source?.name
+                    ?: "A4 の POP を投稿サイズに ・ v${BuildConfig.VERSION_NAME}",
                 color = if (state.notice != null) Skin.Accent else Skin.TextDim,
                 fontSize = 11.sp,
                 maxLines = 2,
@@ -166,8 +169,14 @@ private fun EmptyStage(openPhoto: () -> Unit, openPdf: () -> Unit) {
             .padding(horizontal = 24.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        SheetDiagram()
-        Spacer(Modifier.height(20.dp))
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            ActionButton("写真から", Modifier.weight(1f), primary = true, onClick = openPhoto)
+            ActionButton("PDF から", Modifier.weight(1f), onClick = openPdf)
+        }
+        Spacer(Modifier.height(18.dp))
         Text(
             text = "A4 で作った POP を、そのまま\nインスタの投稿サイズに切り出します。",
             color = Skin.Text,
@@ -175,7 +184,7 @@ private fun EmptyStage(openPhoto: () -> Unit, openPdf: () -> Unit) {
             lineHeight = 22.sp,
             textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(6.dp))
         Text(
             text = "写真でも、Word や Canva から書き出した PDF でも読み込めます。",
             color = Skin.TextDim,
@@ -183,11 +192,8 @@ private fun EmptyStage(openPhoto: () -> Unit, openPdf: () -> Unit) {
             lineHeight = 18.sp,
             textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(24.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            ActionButton("写真から", Modifier.weight(1f), primary = true, onClick = openPhoto)
-            ActionButton("PDF から", Modifier.weight(1f), onClick = openPdf)
-        }
+        Spacer(Modifier.height(18.dp))
+        SheetDiagram()
     }
 }
 

@@ -50,6 +50,8 @@ android {
 
     buildFeatures {
         compose = true
+        // The header prints the version, so a build can be told apart on a phone.
+        buildConfig = true
     }
 
     packaging {
