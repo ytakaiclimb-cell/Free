@@ -1,7 +1,7 @@
 // POP → INSTAGRAM, the browser edition of the Android app in this repo.
 // Same geometry, same backdrops, same output: a 1080 px wide post.
 
-import { convertVideo, videoSupported } from './video.js?v=__BUILD__';
+import { convertVideo, videoSupported, warmUp } from './video.js?v=__BUILD__';
 
 const FORMATS = {
   square:   { key: 'square',   ratio: '1:1',  label: '正方形',     width: 1080, height: 1080 },
@@ -246,13 +246,19 @@ function renderTo(format) {
   return c;
 }
 
-/** One composed frame at any size — the preview, a JPEG, or a video frame. */
-function paintFrame(ctx, W, H, fullResolution) {
-  const tile = state.backdrop === 'blur' ? rebuildTile(W / H, null) : null;
+/**
+ * One composed frame at any size — the preview, a JPEG, or a video frame.
+ * `override` is the decoded frame to draw when the video exporter supplies one.
+ */
+function paintFrame(ctx, W, H, fullResolution, override) {
+  const drawable = override || state.source;
+  const tile = state.backdrop === 'blur'
+    ? blurTile(drawable, W / H, state.srcW, state.srcH, null)
+    : null;
   const p = place(state.layout, state.srcW, state.srcH, W, H, state.margin, state.mode);
   const src = fullResolution && state.kind === 'image'
     ? reduce(state.source, Math.round(p.width))
-    : state.source;
+    : drawable;
   compose(ctx, W, H, src, tile, p);
 }
 
@@ -352,6 +358,7 @@ function adoptVideo(name) {
   settle(name);
   media.play().catch(() => {});
   startVideoLoop();
+  warmUp();
 }
 
 function settle(name) {
@@ -507,6 +514,8 @@ async function exportVideo() {
   if (state.kind !== 'video' || state.busy || !state.file) return;
   const format = state.format;
   cancelAnimationFrame(videoLoop);
+  // The preview keeps playing otherwise, and competes with the encoder.
+  els.media.pause();
   setBusy(true);
   setProgress(0);
   notice(null);
@@ -521,7 +530,7 @@ async function exportVideo() {
       video: els.media,
       width: format.width,
       height: format.height,
-      paint: (ctx, W, H) => paintFrame(ctx, W, H, false),
+      paint: (ctx, W, H, source) => paintFrame(ctx, W, H, false, source),
       onProgress: setProgress,
     });
     const name = outputName(format).replace(/\.jpg$/, '.mp4');
