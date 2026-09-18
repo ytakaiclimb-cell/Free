@@ -49,7 +49,7 @@ for (const id of ['subtitle', 'openPhoto', 'openPdf', 'openVideo',
   'openPhotoBig', 'openPdfBig', 'openVideoBig',
   'fileImage', 'filePdf', 'fileVideo', 'stage', 'empty', 'preview', 'media', 'formats',
   'modes', 'backdrops', 'margin', 'marginOut', 'pages', 'pageLabel', 'prevPage', 'nextPage',
-  'reset', 'saveAll', 'save', 'share', 'toast', 'progress', 'progressFill']) {
+  'reset', 'saveAll', 'save', 'share', 'toast', 'progress', 'progressFill', 'phoneHint']) {
   els[id] = document.getElementById(id);
 }
 
@@ -540,7 +540,7 @@ async function exportVideo() {
         'Instagram が受け付けない場合があります');
     }
     if (canShareFiles) {
-      toast('書き出しました。「Instagram へ」で投稿できます');
+      toast('書き出しました。「Instagram / 写真に保存」から投稿・保存できます');
     } else {
       download(state.made);
       toast(result.audio ? '書き出しました（音つき）' : '書き出しました（音なし）');
@@ -633,9 +633,12 @@ function refresh() {
   els.saveAll.disabled = !ready || video;
   els.saveAll.textContent = video ? '動画は 1 サイズずつ' : '3サイズまとめて保存';
   els.save.disabled = !ready;
-  els.save.textContent = video ? 'MP4 で書き出す' : '保存';
   els.share.disabled = !ready || (video && !state.made);
   els.share.hidden = !canShareFiles;
+  els.phoneHint.hidden = !canShareFiles;
+  els.save.textContent = video
+    ? 'MP4 で書き出す'
+    : (canShareFiles ? 'ダウンロード' : '保存');
   for (const button of [els.openPhoto, els.openPdf, els.openVideo,
     els.openPhotoBig, els.openPdfBig, els.openVideoBig]) {
     if (button) button.disabled = state.busy;
