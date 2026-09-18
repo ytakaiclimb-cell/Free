@@ -32,7 +32,8 @@ const state = {
 };
 
 const els = {};
-for (const id of ['subtitle', 'open', 'openBig', 'file', 'stage', 'empty', 'preview', 'formats',
+for (const id of ['subtitle', 'openPhoto', 'openPdf', 'openPhotoBig', 'openPdfBig',
+  'fileImage', 'filePdf', 'stage', 'empty', 'preview', 'formats',
   'modes', 'backdrops', 'margin', 'marginOut', 'pages', 'pageLabel', 'prevPage', 'nextPage',
   'reset', 'saveAll', 'save', 'share', 'toast']) {
   els[id] = document.getElementById(id);
@@ -416,7 +417,9 @@ function setBusy(on) {
 
 function refresh() {
   const ready = !!state.source && !state.busy;
-  els.subtitle.textContent = problem || state.name || 'A4 の POP を投稿サイズに';
+  els.subtitle.textContent = state.busy
+    ? '読み込み中…'
+    : (problem || state.name || 'A4 の POP を投稿サイズに');
   els.subtitle.classList.toggle('warn', !!problem);
 
   for (const button of els.formats.children) {
@@ -437,7 +440,9 @@ function refresh() {
   els.save.disabled = !ready;
   els.share.disabled = !ready;
   els.share.hidden = !canShareFiles;
-  els.open.textContent = state.busy ? '読み込み中…' : 'ファイルを開く';
+  for (const button of [els.openPhoto, els.openPdf, els.openPhotoBig, els.openPdfBig]) {
+    button.disabled = state.busy;
+  }
 
   const many = state.pdf && state.pageCount > 1;
   els.pages.hidden = !many;
@@ -526,14 +531,19 @@ function wireGestures() {
 }
 
 function wireControls() {
-  const pick = () => { if (!state.busy) els.file.click(); };
-  els.open.addEventListener('click', pick);
-  els.openBig.addEventListener('click', pick);
-  els.file.addEventListener('change', () => {
-    const file = els.file.files && els.file.files[0];
-    els.file.value = '';
-    openFile(file);
-  });
+  const pickImage = () => { if (!state.busy) els.fileImage.click(); };
+  const pickPdf = () => { if (!state.busy) els.filePdf.click(); };
+  els.openPhoto.addEventListener('click', pickImage);
+  els.openPhotoBig.addEventListener('click', pickImage);
+  els.openPdf.addEventListener('click', pickPdf);
+  els.openPdfBig.addEventListener('click', pickPdf);
+  for (const input of [els.fileImage, els.filePdf]) {
+    input.addEventListener('change', () => {
+      const file = input.files && input.files[0];
+      input.value = '';
+      openFile(file);
+    });
+  }
 
   els.formats.addEventListener('click', (e) => {
     const button = e.target.closest('[data-format]');

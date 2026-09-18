@@ -18,13 +18,17 @@
     <h1>POP → INSTAGRAM</h1>
     <p id="subtitle">A4 の POP を投稿サイズに</p>
   </div>
-  <button class="ghost" id="open">ファイルを開く</button>
+  <button class="ghost" id="openPhoto">写真</button>
+  <button class="ghost" id="openPdf">PDF</button>
 </header>
 
 <main>
   <section class="stage" id="stage">
     <div class="empty" id="empty">
-      <button class="solid primary" id="openBig" style="width:100%">POP を読み込む</button>
+      <div class="empty-actions">
+        <button class="solid primary" id="openPhotoBig">写真から</button>
+        <button class="solid" id="openPdfBig">PDF から</button>
+      </div>
       <p class="lead">A4 で作った POP を、そのまま<br>インスタの投稿サイズに切り出します。</p>
       <p class="sub">写真でも、Word や Canva から書き出した PDF でも読み込めます。<br>この画面にドラッグしても開けます。</p>
       <svg viewBox="0 0 320 120" aria-hidden="true">
@@ -94,7 +98,10 @@
   </section>
 </main>
 
-<input type="file" id="file" accept="image/*,application/pdf,.pdf" hidden>
+<!-- Two inputs, not one: an accept list that mixes images with PDFs makes
+     Android offer the file browser only, with no way to reach the gallery. -->
+<input type="file" id="fileImage" accept="image/*" hidden>
+<input type="file" id="filePdf" accept="application/pdf,.pdf" hidden>
 <div class="toast" id="toast"></div>
 
 <script type="module" src="app.js"></script>

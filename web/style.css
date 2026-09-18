@@ -93,6 +93,8 @@ main {
 
 .empty { width: 100%; text-align: center; padding: 8px 4px 0; }
 
+.empty-actions { display: grid; gap: 10px; grid-auto-flow: column; grid-auto-columns: 1fr; }
+
 .empty .lead { font-size: 14px; line-height: 1.7; margin: 18px 0 6px; }
 .empty .sub { font-size: 11px; line-height: 1.7; color: var(--dim); margin: 0 0 18px; }
 .empty svg { width: min(100%, 320px); height: auto; }
