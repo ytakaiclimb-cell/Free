@@ -81,6 +81,10 @@ fun PopScreen(state: EditorState) {
         ActivityResultContracts.OpenMultipleDocuments()
     ) { uris -> if (uris.isNotEmpty()) state.open(uris) }
 
+    val videoPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(MAX_AT_ONCE)
+    ) { uris -> if (uris.isNotEmpty()) state.open(uris) }
+
     // A device that cannot open a picker throws rather than returning, so the
     // failure is caught and shown instead of looking like a dead button.
     val openPhoto: () -> Unit = {
@@ -115,7 +119,7 @@ fun PopScreen(state: EditorState) {
                     .fillMaxSize()
                     .systemBarsPadding()
             ) {
-                Header(state, openPhoto, openPdf)
+                Header(state, openPhoto, openPdf, openVideo)
                 Column(
                     Modifier
                         .weight(1f)
@@ -123,7 +127,7 @@ fun PopScreen(state: EditorState) {
                         .verticalScroll(rememberScrollState())
                 ) {
                     if (!state.loaded) {
-                        EmptyStage(openPhoto, openPdf)
+                        EmptyStage(openPhoto, openPdf, openVideo)
                     } else {
                         Box(
                             Modifier
@@ -140,7 +144,12 @@ fun PopScreen(state: EditorState) {
 }
 
 @Composable
-private fun Header(state: EditorState, openPhoto: () -> Unit, openPdf: () -> Unit) {
+private fun Header(
+    state: EditorState,
+    openPhoto: () -> Unit,
+    openPdf: () -> Unit,
+    openVideo: () -> Unit,
+) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -166,14 +175,16 @@ private fun Header(state: EditorState, openPhoto: () -> Unit, openPdf: () -> Uni
             )
         }
         // Always on screen: this is the only guaranteed way into the app.
-        GhostButton("写真", Modifier.width(64.dp), enabled = !state.busy, onClick = openPhoto)
-        Spacer(Modifier.width(8.dp))
-        GhostButton("PDF", Modifier.width(64.dp), enabled = !state.busy, onClick = openPdf)
+        GhostButton("写真", Modifier.width(52.dp), enabled = !state.busy, onClick = openPhoto)
+        Spacer(Modifier.width(6.dp))
+        GhostButton("PDF", Modifier.width(52.dp), enabled = !state.busy, onClick = openPdf)
+        Spacer(Modifier.width(6.dp))
+        GhostButton("動画", Modifier.width(52.dp), enabled = !state.busy, onClick = openVideo)
     }
 }
 
 @Composable
-private fun EmptyStage(openPhoto: () -> Unit, openPdf: () -> Unit) {
+private fun EmptyStage(openPhoto: () -> Unit, openPdf: () -> Unit, openVideo: () -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -186,6 +197,7 @@ private fun EmptyStage(openPhoto: () -> Unit, openPdf: () -> Unit) {
         ) {
             ActionButton("写真から", Modifier.weight(1f), primary = true, onClick = openPhoto)
             ActionButton("PDF から", Modifier.weight(1f), onClick = openPdf)
+            ActionButton("動画から", Modifier.weight(1f), onClick = openVideo)
         }
         Spacer(Modifier.height(18.dp))
         Text(
@@ -197,7 +209,7 @@ private fun EmptyStage(openPhoto: () -> Unit, openPdf: () -> Unit) {
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            text = "写真でも、Word や Canva から書き出した PDF でも読み込めます。",
+            text = "写真でも、Word や Canva から書き出した PDF でも、動画でも読み込めます。",
             color = Skin.TextDim,
             fontSize = 11.sp,
             lineHeight = 18.sp,
@@ -318,6 +330,16 @@ private fun Controls(state: EditorState) {
                     modifier = Modifier.weight(1f),
                 ) { state.chooseMode(mode) }
             }
+        }
+
+        if (state.isVideo) {
+            Text(
+                text = "動画は背景と余白が効きません。「切り抜く」を選ぶと位置とピンチが反映されます。",
+                color = Skin.Marker,
+                fontSize = 11.sp,
+                lineHeight = 17.sp,
+                modifier = Modifier.padding(top = 12.dp, start = 4.dp, end = 4.dp),
+            )
         }
 
         SectionLabel("背景")
@@ -455,15 +477,20 @@ private fun Actions(state: EditorState) {
                 enabled = ready,
             ) { state.resetPlacement() }
             GhostButton(
-                label = "3サイズまとめて保存",
+                label = if (state.isVideo) "動画は 1 サイズずつ" else "3サイズまとめて保存",
                 modifier = Modifier.weight(1f),
-                enabled = ready,
+                enabled = ready && !state.isVideo,
             ) { state.export(PostFormat.entries.toList(), toInstagram = false) }
         }
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             ActionButton(
-                label = if (state.busy) "処理中…" else "保存",
+                label = when {
+                    state.progress >= 0f -> "変換中… ${(state.progress * 100).roundToInt()}%"
+                    state.busy -> "処理中…"
+                    state.isVideo -> "MP4 で保存"
+                    else -> "保存"
+                },
                 modifier = Modifier.weight(1f),
                 enabled = ready,
             ) { state.export(listOf(state.format), toInstagram = false) }

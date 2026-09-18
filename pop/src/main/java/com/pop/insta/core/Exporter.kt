@@ -7,6 +7,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -34,6 +35,38 @@ object Exporter {
         val mark = if (page > 0) "_p${page + 1}" else ""
         return "$base${mark}_${format.width}x${format.height}.jpg"
     }
+
+    /** Writes a finished clip into Movies/POP and returns its entry. */
+    fun saveVideo(context: Context, file: File, name: String): Uri? {
+        val resolver = context.contentResolver
+        val collection = MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        val values = ContentValues().apply {
+            put(MediaStore.Video.Media.DISPLAY_NAME, name)
+            put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+            put(
+                MediaStore.Video.Media.RELATIVE_PATH,
+                Environment.DIRECTORY_MOVIES + "/" + FOLDER,
+            )
+            put(MediaStore.Video.Media.IS_PENDING, 1)
+        }
+        val uri = resolver.insert(collection, values) ?: return null
+        return try {
+            val stream = resolver.openOutputStream(uri)
+                ?: throw IllegalStateException("cannot write $uri")
+            stream.use { out -> file.inputStream().use { input -> input.copyTo(out) } }
+            values.clear()
+            values.put(MediaStore.Video.Media.IS_PENDING, 0)
+            resolver.update(uri, values, null, null)
+            uri
+        } catch (t: Throwable) {
+            resolver.delete(uri, null, null)
+            null
+        }
+    }
+
+    /** Names a clip after whatever it came from. */
+    fun videoName(format: PostFormat, source: String? = null): String =
+        fileName(format, source).removeSuffix(".jpg") + ".mp4"
 
     /** Writes a JPEG into Pictures/POP and returns its MediaStore entry. */
     fun save(context: Context, bitmap: Bitmap, name: String): Uri? {
@@ -67,7 +100,7 @@ object Exporter {
      * Hands the saved posts over. Instagram directly when it is installed,
      * otherwise the ordinary share sheet.
      */
-    fun share(context: Context, uris: List<Uri>, preferInstagram: Boolean) {
+    fun share(context: Context, uris: List<Uri>, preferInstagram: Boolean, mime: String = "image/jpeg") {
         if (uris.isEmpty()) return
         val base = if (uris.size == 1) {
             Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_STREAM, uris.first())
@@ -75,7 +108,7 @@ object Exporter {
             Intent(Intent.ACTION_SEND_MULTIPLE)
                 .putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
         }
-        base.type = "image/jpeg"
+        base.type = mime
         base.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 
         if (preferInstagram) {

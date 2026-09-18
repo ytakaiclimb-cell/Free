@@ -70,4 +70,9 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.foundation)
     implementation(libs.androidx.material3)
+
+    // Video conversion: decode, scale into the frame, re-encode, mux.
+    implementation(libs.androidx.media3.common)
+    implementation(libs.androidx.media3.effect)
+    implementation(libs.androidx.media3.transformer)
 }

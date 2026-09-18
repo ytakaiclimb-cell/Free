@@ -24,6 +24,7 @@ import com.pop.insta.core.Renderer
 import com.pop.insta.core.Scaler
 import com.pop.insta.core.Source
 import com.pop.insta.core.SourceLoader
+import com.pop.insta.core.VideoTranscoder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -38,6 +39,8 @@ class Item(
     val uri: Uri,
     val name: String,
     val isPdf: Boolean,
+    val isVideo: Boolean,
+    val durationMs: Long,
     val pageCount: Int,
     var pageIndex: Int,
     var preview: Bitmap,
@@ -73,6 +76,8 @@ class EditorState(
     var name by mutableStateOf("")
         private set
     var isPdf by mutableStateOf(false)
+        private set
+    var isVideo by mutableStateOf(false)
         private set
     var pageCount by mutableStateOf(1)
         private set
@@ -149,6 +154,8 @@ class EditorState(
             uri = uri,
             name = name,
             isPdf = isPdf,
+            isVideo = isVideo,
+            durationMs = durationMs,
             pageCount = pageCount,
             pageIndex = pageIndex,
             preview = bitmap,
@@ -178,6 +185,7 @@ class EditorState(
         srcH = item.preview.height
         name = item.name
         isPdf = item.isPdf
+        isVideo = item.isVideo
         pageCount = item.pageCount
         pageIndex = item.pageIndex
         layout = item.layout
@@ -193,6 +201,7 @@ class EditorState(
         srcH = 0
         name = ""
         isPdf = false
+        isVideo = false
         pageCount = 1
         pageIndex = 0
         layout = Layout()
@@ -315,6 +324,10 @@ class EditorState(
         val item = items.getOrNull(active) ?: return
         if (busy || formats.isEmpty()) return
         stash()
+        if (item.isVideo) {
+            exportVideo(item, toInstagram)
+            return
+        }
         busy = true
         val place = layout
         scope.launch {
@@ -343,6 +356,52 @@ class EditorState(
         }
     }
 
+    /** A clip: converted by the device's own encoder, then filed in the gallery. */
+    private fun exportVideo(item: Item, toInstagram: Boolean) {
+        busy = true
+        notice = null
+        progress = 0f
+        val target = format
+        scope.launch {
+            val outcome = VideoTranscoder.run(
+                context = context,
+                scope = scope,
+                uri = item.uri,
+                srcW = item.preview.width,
+                srcH = item.preview.height,
+                format = target,
+                mode = mode,
+                margin = margin,
+                layout = item.layout,
+                onProgress = { progress = it },
+            )
+            progress = -1f
+            busy = false
+            when (outcome) {
+                is VideoTranscoder.Outcome.Failed -> notice = outcome.message
+                is VideoTranscoder.Outcome.Ok -> {
+                    val uri = withContext(Dispatchers.IO) {
+                        val saved = Exporter.saveVideo(
+                            context,
+                            outcome.file,
+                            Exporter.videoName(target, item.name),
+                        )
+                        outcome.file.delete()
+                        saved
+                    }
+                    if (uri == null) {
+                        notice = "保存できませんでした"
+                    } else {
+                        toast("保存しました（ギャラリー / POP）")
+                        if (toInstagram) {
+                            Exporter.share(context, listOf(uri), preferInstagram = true, mime = "video/mp4")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     /** Every open POP through the settings on screen, saved one after another. */
     fun exportAll() {
         if (busy || items.size < 2) return
@@ -356,18 +415,47 @@ class EditorState(
             var saved = 0
             var failed = 0
             for ((index, item) in queue.withIndex()) {
-                val ok = withContext(Dispatchers.IO) {
-                    val bitmap = render(item, target, item.layout)
-                    if (bitmap == null) {
-                        false
-                    } else {
-                        val uri = Exporter.save(
-                            context,
-                            bitmap,
-                            Exporter.fileName(target, item.name, if (item.pageCount > 1) item.pageIndex else 0),
-                        )
-                        bitmap.recycle()
-                        uri != null
+                val done = index.toFloat() / queue.size
+                val slice = 1f / queue.size
+                val ok = if (item.isVideo) {
+                    val outcome = VideoTranscoder.run(
+                        context = context,
+                        scope = scope,
+                        uri = item.uri,
+                        srcW = item.preview.width,
+                        srcH = item.preview.height,
+                        format = target,
+                        mode = mode,
+                        margin = margin,
+                        layout = item.layout,
+                        onProgress = { progress = done + it * slice },
+                    )
+                    when (outcome) {
+                        is VideoTranscoder.Outcome.Failed -> false
+                        is VideoTranscoder.Outcome.Ok -> withContext(Dispatchers.IO) {
+                            val uri = Exporter.saveVideo(
+                                context,
+                                outcome.file,
+                                Exporter.videoName(target, item.name),
+                            )
+                            outcome.file.delete()
+                            uri != null
+                        }
+                    }
+                } else {
+                    withContext(Dispatchers.IO) {
+                        val bitmap = render(item, target, item.layout)
+                        if (bitmap == null) {
+                            false
+                        } else {
+                            val uri = Exporter.save(
+                                context,
+                                bitmap,
+                                Exporter.fileName(target, item.name, if (item.pageCount > 1) item.pageIndex else 0),
+                            )
+                            bitmap.recycle()
+                            uri != null
+                        }
                     }
                 }
                 if (ok) saved++ else failed++
@@ -375,7 +463,7 @@ class EditorState(
             }
             progress = -1f
             busy = false
-            if (saved > 0) toast("$saved 枚保存しました（ギャラリー / POP）")
+            if (saved > 0) toast("$saved 件保存しました（ギャラリー / POP）")
             if (failed > 0) notice = "$failed 件は保存できませんでした"
         }
     }

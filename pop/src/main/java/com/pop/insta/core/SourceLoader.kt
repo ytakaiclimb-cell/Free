@@ -6,6 +6,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.ImageDecoder
 import android.graphics.pdf.PdfRenderer
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.OpenableColumns
 import kotlin.math.ceil
@@ -20,6 +21,10 @@ data class Source(
     val isPdf: Boolean,
     val pageCount: Int,
     val pageIndex: Int,
+    val isVideo: Boolean = false,
+    val durationMs: Long = 0L,
+    val videoWidth: Int = 0,
+    val videoHeight: Int = 0,
 ) {
     val width: Int get() = bitmap.width
     val height: Int get() = bitmap.height
@@ -44,10 +49,58 @@ object SourceLoader {
     const val PREVIEW_EDGE = 1100
 
     fun load(context: Context, uri: Uri, page: Int = 0, maxEdge: Int = FULL_EDGE): LoadResult = try {
-        if (isPdf(context, uri)) loadPdf(context, uri, page, maxEdge)
-        else loadImage(context, uri, maxEdge)
+        when {
+            isVideo(context, uri) -> loadVideo(context, uri)
+            isPdf(context, uri) -> loadPdf(context, uri, page, maxEdge)
+            else -> loadImage(context, uri, maxEdge)
+        }
     } catch (t: Throwable) {
         LoadResult.Failed("読み込めませんでした（${t.javaClass.simpleName}）")
+    }
+
+    fun isVideo(context: Context, uri: Uri): Boolean {
+        val type = context.contentResolver.getType(uri)
+        if (type != null) return type.startsWith("video/")
+        return Regex("\\.(mp4|mov|m4v|webm|3gp|mkv)$", RegexOption.IGNORE_CASE)
+            .containsMatchIn(uri.toString())
+    }
+
+    /**
+     * A clip is only opened far enough to frame it: its first picture, its
+     * size and its length. The pixels themselves are never held.
+     */
+    private fun loadVideo(context: Context, uri: Uri): LoadResult {
+        val reader = MediaMetadataRetriever()
+        try {
+            reader.setDataSource(context, uri)
+            // getFrameAtTime hands back an upright frame, rotation already applied.
+            val frame = reader.getFrameAtTime(0L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                ?: return LoadResult.Failed("映像を読めませんでした")
+            val still = if (frame.config == Bitmap.Config.ARGB_8888) frame
+            else frame.copy(Bitmap.Config.ARGB_8888, false) ?: frame
+            val duration = reader.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                ?.toLongOrNull() ?: 0L
+            return LoadResult.Ok(
+                Source(
+                    bitmap = still,
+                    name = displayName(context, uri) ?: "動画",
+                    uri = uri,
+                    isPdf = false,
+                    pageCount = 1,
+                    pageIndex = 0,
+                    isVideo = true,
+                    durationMs = duration,
+                    videoWidth = still.width,
+                    videoHeight = still.height,
+                )
+            )
+        } finally {
+            try {
+                reader.release()
+            } catch (t: Throwable) {
+                // nothing left to do about it
+            }
+        }
     }
 
     private fun isPdf(context: Context, uri: Uri): Boolean {
