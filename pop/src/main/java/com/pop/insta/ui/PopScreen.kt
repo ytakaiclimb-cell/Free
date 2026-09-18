@@ -103,6 +103,15 @@ fun PopScreen(state: EditorState) {
             state.report("PDF を開けませんでした（${t.javaClass.simpleName}）")
         }
     }
+    val openVideo: () -> Unit = {
+        try {
+            videoPicker.launch(
+                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
+            )
+        } catch (t: Throwable) {
+            state.report("動画を開けませんでした（${t.javaClass.simpleName}）")
+        }
+    }
 
     MaterialTheme(colorScheme = popScheme) {
         BoxWithConstraints(
