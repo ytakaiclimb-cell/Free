@@ -31,6 +31,10 @@ const state = {
   busy: false,
 };
 
+// Stamped by the publishing workflow; "dev" when served straight from disk.
+const rawBuild = document.body.getAttribute('data-build') || '';
+const BUILD = /^[0-9]/.test(rawBuild) ? rawBuild : 'dev';
+
 const els = {};
 for (const id of ['subtitle', 'openPhoto', 'openPdf', 'openPhotoBig', 'openPdfBig',
   'fileImage', 'filePdf', 'stage', 'empty', 'preview', 'formats',
@@ -419,7 +423,7 @@ function refresh() {
   const ready = !!state.source && !state.busy;
   els.subtitle.textContent = state.busy
     ? '読み込み中…'
-    : (problem || state.name || 'A4 の POP を投稿サイズに');
+    : (problem || state.name || `A4 の POP を投稿サイズに ・ ${BUILD}`);
   els.subtitle.classList.toggle('warn', !!problem);
 
   for (const button of els.formats.children) {
@@ -441,7 +445,7 @@ function refresh() {
   els.share.disabled = !ready;
   els.share.hidden = !canShareFiles;
   for (const button of [els.openPhoto, els.openPdf, els.openPhotoBig, els.openPdfBig]) {
-    button.disabled = state.busy;
+    if (button) button.disabled = state.busy;
   }
 
   const many = state.pdf && state.pageCount > 1;
@@ -530,15 +534,19 @@ function wireGestures() {
   c.addEventListener('dblclick', resetPlacement);
 }
 
+function on(element, type, handler, options) {
+  if (element) element.addEventListener(type, handler, options);
+}
+
 function wireControls() {
   const pickImage = () => { if (!state.busy) els.fileImage.click(); };
   const pickPdf = () => { if (!state.busy) els.filePdf.click(); };
-  els.openPhoto.addEventListener('click', pickImage);
-  els.openPhotoBig.addEventListener('click', pickImage);
-  els.openPdf.addEventListener('click', pickPdf);
-  els.openPdfBig.addEventListener('click', pickPdf);
+  on(els.openPhoto, 'click', pickImage);
+  on(els.openPhotoBig, 'click', pickImage);
+  on(els.openPdf, 'click', pickPdf);
+  on(els.openPdfBig, 'click', pickPdf);
   for (const input of [els.fileImage, els.filePdf]) {
-    input.addEventListener('change', () => {
+    on(input, 'change', () => {
       const file = input.files && input.files[0];
       input.value = '';
       openFile(file);
@@ -626,7 +634,18 @@ function wireControls() {
   });
 }
 
-setColorDots();
-wireControls();
-wireGestures();
-refresh();
+try {
+  setColorDots();
+  wireControls();
+  wireGestures();
+  refresh();
+} catch (err) {
+  // A half-loaded page used to look like dead buttons; now it says so.
+  const line = document.getElementById('subtitle');
+  if (line) {
+    line.textContent = `読み込みに失敗しました（${(err && err.message) || err}）。` +
+      'ページを再読み込みしてください。';
+    line.classList.add('warn');
+  }
+  throw err;
+}

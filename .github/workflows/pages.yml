@@ -45,6 +45,14 @@ jobs:
             "リポジトリの Settings → Pages → Build and deployment → Source を" \
             "「GitHub Actions」にしてから、このワークフローを再実行してください。"
 
+      - name: Stamp the build
+        run: |
+          # A fresh query string per deploy, so a browser can never pair a new
+          # page with a stale script. The same stamp is shown in the header.
+          STAMP="${GITHUB_RUN_NUMBER}.$(echo "$GITHUB_SHA" | cut -c1-7)"
+          sed -i "s/__BUILD__/${STAMP}/g" web/index.html web/install/index.html
+          grep -o "v=[0-9][^\"]*" web/index.html | head -2
+
       - name: Upload the site
         uses: actions/upload-pages-artifact@v3
         with:
