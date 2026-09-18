@@ -32,7 +32,7 @@ class MainActivity : ComponentActivity() {
 
     private fun handOff(intent: Intent?) {
         val uri = incoming(intent) ?: return
-        state.open(uri)
+        state.open(listOf(uri))
     }
 
     private fun incoming(intent: Intent?): Uri? {

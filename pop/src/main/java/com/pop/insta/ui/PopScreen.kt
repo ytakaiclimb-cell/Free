@@ -4,6 +4,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -20,8 +21,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
@@ -35,7 +41,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,6 +59,9 @@ import com.pop.insta.core.PostFormat
 import com.pop.insta.core.Renderer
 import kotlin.math.roundToInt
 
+/** The picker will not hand over more than this in one go. */
+private const val MAX_AT_ONCE = 30
+
 private val popScheme = darkColorScheme(
     primary = Skin.Accent,
     background = Skin.Shell,
@@ -63,12 +74,12 @@ private val popScheme = darkColorScheme(
 @Composable
 fun PopScreen(state: EditorState) {
     val photoPicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia()
-    ) { uri -> if (uri != null) state.open(uri) }
+        ActivityResultContracts.PickMultipleVisualMedia(MAX_AT_ONCE)
+    ) { uris -> if (uris.isNotEmpty()) state.open(uris) }
 
     val documentPicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri -> if (uri != null) state.open(uri) }
+        ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris -> if (uris.isNotEmpty()) state.open(uris) }
 
     // A device that cannot open a picker throws rather than returning, so the
     // failure is caught and shown instead of looking like a dead button.
@@ -111,7 +122,7 @@ fun PopScreen(state: EditorState) {
                         .fillMaxWidth()
                         .verticalScroll(rememberScrollState())
                 ) {
-                    if (state.source == null) {
+                    if (!state.loaded) {
                         EmptyStage(openPhoto, openPdf)
                     } else {
                         Box(
@@ -146,7 +157,7 @@ private fun Header(state: EditorState, openPhoto: () -> Unit, openPdf: () -> Uni
             )
             Text(
                 text = state.notice
-                    ?: state.source?.name
+                    ?: state.name.ifEmpty { null }
                     ?: "A4 の POP を投稿サイズに ・ v${BuildConfig.VERSION_NAME}",
                 color = if (state.notice != null) Skin.Accent else Skin.TextDim,
                 fontSize = 11.sp,
@@ -231,8 +242,7 @@ private fun Stage(state: EditorState) {
                 }
         ) {
             val image = state.image
-            val source = state.source
-            if (image != null && source != null) {
+            if (image != null && state.loaded) {
                 Canvas(Modifier.fillMaxSize()) {
                     val frameW = size.width
                     val frameH = size.height
@@ -248,8 +258,8 @@ private fun Stage(state: EditorState) {
                     }
                     val place = Composer.place(
                         layout = state.layout,
-                        srcW = source.width,
-                        srcH = source.height,
+                        srcW = state.srcW,
+                        srcH = state.srcH,
                         frameW = frameW,
                         frameH = frameH,
                         margin = state.margin,
@@ -279,12 +289,13 @@ private fun Stage(state: EditorState) {
 
 @Composable
 private fun Controls(state: EditorState) {
-    val enabled = state.source != null
+    val enabled = state.loaded
     Column(
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp)
     ) {
+        Strip(state)
         SectionLabel("サイズ")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PostFormat.entries.forEach { format ->
@@ -361,8 +372,7 @@ private fun Controls(state: EditorState) {
             )
         }
 
-        val source = state.source
-        if (source != null && source.isPdf && source.pageCount > 1) {
+        if (state.isPdf && state.pageCount > 1) {
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -371,7 +381,7 @@ private fun Controls(state: EditorState) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    text = "ページ ${source.pageIndex + 1} / ${source.pageCount}",
+                    text = "ページ ${state.pageIndex + 1} / ${state.pageCount}",
                     color = Skin.TextDim,
                     fontSize = 11.sp,
                     modifier = Modifier.weight(1f),
@@ -379,13 +389,56 @@ private fun Controls(state: EditorState) {
                 GhostButton(
                     label = "前へ",
                     modifier = Modifier.width(74.dp),
-                    enabled = !state.busy && source.pageIndex > 0,
+                    enabled = !state.busy && state.pageIndex > 0,
                 ) { state.turnPage(-1) }
                 GhostButton(
                     label = "次へ",
                     modifier = Modifier.width(74.dp),
-                    enabled = !state.busy && source.pageIndex < source.pageCount - 1,
+                    enabled = !state.busy && state.pageIndex < state.pageCount - 1,
                 ) { state.turnPage(1) }
+            }
+        }
+    }
+}
+
+/** What is open, shown as soon as there is more than one. */
+@Composable
+private fun Strip(state: EditorState) {
+    if (state.items.size < 2) return
+    Column(Modifier.fillMaxWidth().padding(top = 12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "${state.items.size} 件（設定は全部に効きます）",
+                color = Skin.TextDim,
+                fontSize = 11.sp,
+                modifier = Modifier.weight(1f),
+            )
+            GhostButton("クリア", Modifier.width(78.dp), enabled = !state.busy) { state.clearAll() }
+        }
+        Spacer(Modifier.height(8.dp))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            itemsIndexed(state.items) { index, item ->
+                val selected = index == state.active
+                Box(
+                    Modifier
+                        .size(62.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (selected) Skin.PanelHi else Skin.Panel)
+                        .border(
+                            width = 1.dp,
+                            color = if (selected) Skin.Accent else Color.Transparent,
+                            shape = RoundedCornerShape(10.dp),
+                        )
+                        .clickable(enabled = !state.busy) { state.select(index) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Image(
+                        bitmap = item.thumb,
+                        contentDescription = null,
+                        modifier = Modifier.padding(5.dp).fillMaxSize(),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
             }
         }
     }
@@ -393,7 +446,7 @@ private fun Controls(state: EditorState) {
 
 @Composable
 private fun Actions(state: EditorState) {
-    val ready = state.source != null && !state.busy
+    val ready = state.loaded && !state.busy
     Column(Modifier.padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 14.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             GhostButton(
@@ -420,6 +473,19 @@ private fun Actions(state: EditorState) {
                 primary = true,
                 enabled = ready,
             ) { state.export(listOf(state.format), toInstagram = true) }
+        }
+        if (state.items.size > 1) {
+            Spacer(Modifier.height(10.dp))
+            ActionButton(
+                label = if (state.progress >= 0f) {
+                    "保存中… ${(state.progress * 100).roundToInt()}%"
+                } else {
+                    "${state.items.size} 件すべて保存"
+                },
+                modifier = Modifier.fillMaxWidth(),
+                primary = true,
+                enabled = ready,
+            ) { state.exportAll() }
         }
     }
 }

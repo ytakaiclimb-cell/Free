@@ -16,9 +16,23 @@ object Exporter {
     private const val FOLDER = "POP"
     private const val INSTAGRAM = "com.instagram.android"
 
-    fun fileName(format: PostFormat, stamp: Date = Date()): String {
-        val time = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(stamp)
-        return "POP_${time}_${format.width}x${format.height}.jpg"
+    /**
+     * Named after whatever it came from, so a batch saved in one go is still
+     * recognisable in the gallery. MediaStore settles any collision itself.
+     */
+    fun fileName(format: PostFormat, source: String? = null, page: Int = 0): String {
+        val stem = (source ?: "")
+            .substringBeforeLast('.')
+            .replace(Regex("[\\\\/:*?\"<>|]+"), "_")
+            .trim()
+            .take(48)
+        val base = if (stem.isEmpty()) {
+            "POP_" + SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        } else {
+            stem
+        }
+        val mark = if (page > 0) "_p${page + 1}" else ""
+        return "$base${mark}_${format.width}x${format.height}.jpg"
     }
 
     /** Writes a JPEG into Pictures/POP and returns its MediaStore entry. */

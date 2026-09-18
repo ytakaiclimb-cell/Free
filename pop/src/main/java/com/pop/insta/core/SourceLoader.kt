@@ -36,11 +36,16 @@ sealed interface LoadResult {
  * print-ish resolution rather than refused.
  */
 object SourceLoader {
-    /** Long edge cap. Plenty for a 1080 px post, small enough to stay safe. */
-    private const val MAX_EDGE = 2600
+    /** Long edge for an export. Plenty for a 1080 px post. */
+    const val FULL_EDGE = 2600
 
-    fun load(context: Context, uri: Uri, page: Int = 0): LoadResult = try {
-        if (isPdf(context, uri)) loadPdf(context, uri, page) else loadImage(context, uri)
+    /** Long edge for the copy kept on screen. A dozen of these must fit in
+     *  memory at once, which a dozen full size ones would not. */
+    const val PREVIEW_EDGE = 1100
+
+    fun load(context: Context, uri: Uri, page: Int = 0, maxEdge: Int = FULL_EDGE): LoadResult = try {
+        if (isPdf(context, uri)) loadPdf(context, uri, page, maxEdge)
+        else loadImage(context, uri, maxEdge)
     } catch (t: Throwable) {
         LoadResult.Failed("読み込めませんでした（${t.javaClass.simpleName}）")
     }
@@ -51,7 +56,7 @@ object SourceLoader {
         return uri.toString().endsWith(".pdf", ignoreCase = true)
     }
 
-    private fun loadImage(context: Context, uri: Uri): LoadResult {
+    private fun loadImage(context: Context, uri: Uri, maxEdge: Int): LoadResult {
         val source = ImageDecoder.createSource(context.contentResolver, uri)
         val bitmap = ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
             // Software pixels: the backdrop sampler and the exporter both read
@@ -59,8 +64,8 @@ object SourceLoader {
             decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
             decoder.isMutableRequired = false
             val longest = max(info.size.width, info.size.height)
-            if (longest > MAX_EDGE) {
-                decoder.setTargetSampleSize(ceil(longest.toFloat() / MAX_EDGE).toInt())
+            if (longest > maxEdge) {
+                decoder.setTargetSampleSize(ceil(longest.toFloat() / maxEdge).toInt())
             }
         }
         val safe = if (bitmap.config == Bitmap.Config.ARGB_8888) bitmap
@@ -77,7 +82,7 @@ object SourceLoader {
         )
     }
 
-    private fun loadPdf(context: Context, uri: Uri, page: Int): LoadResult {
+    private fun loadPdf(context: Context, uri: Uri, page: Int, maxEdge: Int): LoadResult {
         val descriptor = context.contentResolver.openFileDescriptor(uri, "r")
             ?: return LoadResult.Failed("PDF を開けませんでした")
         var renderer: PdfRenderer? = null
@@ -88,7 +93,7 @@ object SourceLoader {
             val pdfPage = renderer.openPage(index)
             try {
                 // Page size is in points; scale so the long edge lands on MAX_EDGE.
-                val scale = MAX_EDGE.toFloat() / max(pdfPage.width, pdfPage.height)
+                val scale = maxEdge.toFloat() / max(pdfPage.width, pdfPage.height)
                 val w = max(1, (pdfPage.width * scale).roundToInt())
                 val h = max(1, (pdfPage.height * scale).roundToInt())
                 val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
@@ -115,7 +120,7 @@ object SourceLoader {
         }
     }
 
-    private fun displayName(context: Context, uri: Uri): String? = try {
+    fun displayName(context: Context, uri: Uri): String? = try {
         context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
             ?.use { cursor ->
                 if (cursor.moveToFirst() && !cursor.isNull(0)) cursor.getString(0) else null
