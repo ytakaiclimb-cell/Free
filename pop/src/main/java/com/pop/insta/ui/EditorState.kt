@@ -55,16 +55,29 @@ class EditorState(
     var busy by mutableStateOf(false)
         private set
 
+    /** The last thing that went wrong, shown in the header rather than only
+     *  flashed as a toast, which is easy to miss. */
+    var notice by mutableStateOf<String?>(null)
+        private set
+
     // ---- loading -----------------------------------------------------------
+
+    /** Surfaces a problem the screen itself ran into, such as a picker that
+     *  the device could not open. */
+    fun report(message: String) {
+        notice = message
+    }
 
     fun open(uri: Uri, page: Int = 0) {
         if (busy) return
         busy = true
+        notice = null
         scope.launch {
             val result = withContext(Dispatchers.IO) { SourceLoader.load(context, uri, page) }
             when (result) {
                 is LoadResult.Failed -> {
                     busy = false
+                    notice = result.message
                     toast(result.message)
                 }
 
@@ -77,6 +90,7 @@ class EditorState(
                     image = loaded.bitmap.asImageBitmap()
                     paper = sampled
                     layout = Layout()
+                    notice = null
                     busy = false
                     refreshBlurTile()
                 }

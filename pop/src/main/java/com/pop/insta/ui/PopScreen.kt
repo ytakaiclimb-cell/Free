@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -67,34 +69,60 @@ fun PopScreen(state: EditorState) {
         ActivityResultContracts.OpenDocument()
     ) { uri -> if (uri != null) state.open(uri) }
 
+    // A device that cannot open a picker throws rather than returning, so the
+    // failure is caught and shown instead of looking like a dead button.
     val openPhoto: () -> Unit = {
-        photoPicker.launch(
-            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-        )
+        try {
+            photoPicker.launch(
+                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+            )
+        } catch (t: Throwable) {
+            state.report("写真を開けませんでした（${t.javaClass.simpleName}）")
+        }
     }
-    val openPdf: () -> Unit = { documentPicker.launch(arrayOf("application/pdf")) }
+    val openPdf: () -> Unit = {
+        try {
+            documentPicker.launch(arrayOf("application/pdf"))
+        } catch (t: Throwable) {
+            state.report("PDF を開けませんでした（${t.javaClass.simpleName}）")
+        }
+    }
 
     MaterialTheme(colorScheme = popScheme) {
-        Column(
+        BoxWithConstraints(
             Modifier
                 .fillMaxSize()
                 .background(Skin.Shell)
-                .systemBarsPadding()
         ) {
-            Header(state, openPhoto, openPdf)
-            Box(
+            // The preview takes a share of the window rather than whatever is
+            // left over, so a short screen can never squeeze it — and the
+            // controls under it — down to nothing.
+            val stageHeight = (maxHeight * 0.42f).coerceIn(200.dp, 460.dp)
+            Column(
                 Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
+                    .fillMaxSize()
+                    .systemBarsPadding()
             ) {
-                if (state.source == null) {
-                    EmptyStage(openPhoto, openPdf)
-                } else {
-                    Stage(state)
+                Header(state, openPhoto, openPdf)
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    if (state.source == null) {
+                        EmptyStage(openPhoto, openPdf)
+                    } else {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .height(stageHeight)
+                        ) { Stage(state) }
+                    }
+                    Controls(state)
                 }
+                Actions(state)
             }
-            Controls(state)
-            Actions(state)
         }
     }
 }
@@ -116,18 +144,17 @@ private fun Header(state: EditorState, openPhoto: () -> Unit, openPdf: () -> Uni
                 letterSpacing = 2.sp,
             )
             Text(
-                text = state.source?.name ?: "A4 の POP を投稿サイズに",
-                color = Skin.TextDim,
+                text = state.notice ?: state.source?.name ?: "A4 の POP を投稿サイズに",
+                color = if (state.notice != null) Skin.Accent else Skin.TextDim,
                 fontSize = 11.sp,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        if (state.source != null) {
-            GhostButton("写真", Modifier.width(62.dp), enabled = !state.busy, onClick = openPhoto)
-            Spacer(Modifier.width(8.dp))
-            GhostButton("PDF", Modifier.width(62.dp), enabled = !state.busy, onClick = openPdf)
-        }
+        // Always on screen: this is the only guaranteed way into the app.
+        GhostButton("写真", Modifier.width(64.dp), enabled = !state.busy, onClick = openPhoto)
+        Spacer(Modifier.width(8.dp))
+        GhostButton("PDF", Modifier.width(64.dp), enabled = !state.busy, onClick = openPdf)
     }
 }
 
@@ -135,13 +162,12 @@ private fun Header(state: EditorState, openPhoto: () -> Unit, openPdf: () -> Uni
 private fun EmptyStage(openPhoto: () -> Unit, openPdf: () -> Unit) {
     Column(
         Modifier
-            .fillMaxSize()
-            .padding(horizontal = 28.dp),
-        verticalArrangement = Arrangement.Center,
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         SheetDiagram()
-        Spacer(Modifier.height(22.dp))
+        Spacer(Modifier.height(20.dp))
         Text(
             text = "A4 で作った POP を、そのまま\nインスタの投稿サイズに切り出します。",
             color = Skin.Text,
