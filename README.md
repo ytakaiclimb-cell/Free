@@ -1,15 +1,15 @@
-# スマホアプリ置き場
+# POP INSTA / M.P.C
 
-Android アプリを 2 つ置いています。どのブランチに push しても GitHub Actions が
-両方をビルドし、同じ `latest` リリースに差し替えます。
+| | |
+|---|---|
+| **ブラウザ版を開く**（PC・iPhone・Android） | https://ytakaiclimb-cell.github.io/Free/ |
+| **Android アプリを配る**（QR コードつき） | https://ytakaiclimb-cell.github.io/Free/install/ |
+| POP INSTA の APK 直リンク | [pop.apk](https://github.com/ytakaiclimb-cell/Free/releases/latest/download/pop.apk) |
+| M.P.C（ホームアプリ）の APK 直リンク | [mpc.apk](https://github.com/ytakaiclimb-cell/Free/releases/latest/download/mpc.apk) |
 
-| アプリ | 中身 | ダウンロード |
-|---|---|---|
-| **POP INSTA** | A4 の POP をインスタの投稿サイズに変換 | [pop.apk](https://github.com/ytakaiclimb-cell/Free/releases/latest/download/pop.apk) |
-| **M.P.C** | パッドとフェーダーのホームアプリ | [mpc.apk](https://github.com/ytakaiclimb-cell/Free/releases/latest/download/mpc.apk) |
-
-リンクは常に最新ビルドを指します。固定のデバッグ鍵で署名しているので、2 回目以降は
-**アンインストールせずに上書き**できます。
+どのブランチに push しても GitHub Actions が APK を 2 つビルドして `latest` リリースを
+差し替え、`web/` を GitHub Pages に公開します。APK は固定の鍵で署名しているので、
+2 回目以降は**アンインストールせずに上書き**できます。
 
 ---
 
@@ -42,6 +42,27 @@ A4 で作った POP は縦長（1:1.414）で、インスタの枠（1:1 / 4:5 /
 - 縮小は段階的に行うので、POP の細かい文字がつぶれにくくなっています
 - 「紙色」は POP の外周 1 列の平均色、「ぼかし」は縮小した POP を引き伸ばしたもの
 - 権限は不要です（写真選択と自分が保存した画像しか触りません）
+
+## ブラウザ版（`web/`）
+
+同じ変換を、インストールなしでブラウザの中だけで行います。パソコンと iPhone は
+こちらを使ってください。
+
+- 画像も PDF も読めます（PDF は同梱した pdf.js で描画。ページ送りも同じ）
+- 変換はすべて端末の中で完結します。アップロードは一切ありません
+- **保存** はダウンロード、**共有 / Instagram へ** は端末の共有シート
+  （iPhone は共有シートから Instagram に直接渡せます）
+- ドラッグ＆ドロップ、貼り付け（Ctrl/⌘+V）でも読み込めます
+- ホーム画面に追加するとアプリのように開けます
+
+```
+web/
+├── index.html            画面
+├── app.js                変換とプレビュー（Android 版と同じ計算式）
+├── style.css             配色
+├── install/              APK の配布ページ（QR コード）
+└── vendor/               pdf.js（同梱。CDN を使いません）
+```
 
 ## 構成
 

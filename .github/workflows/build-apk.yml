@@ -44,14 +44,14 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build debug APKs
+      - name: Build the APKs
         env:
           VERSION_CODE: ${{ github.run_number }}
           VERSION_NAME: 0.1.${{ github.run_number }}
         run: |
           chmod +x ./gradlew
           set -o pipefail
-          if ! ./gradlew --no-daemon --console=plain assembleDebug < /dev/null 2>&1 | tee build.log; then
+          if ! ./gradlew --no-daemon --console=plain assembleRelease < /dev/null 2>&1 | tee build.log; then
             # Kotlin prints its errors long before the Gradle failure banner, so
             # repeat them at the end where they are easy to find.
             echo "::group::Compiler errors"
@@ -63,8 +63,8 @@ jobs:
       - name: Collect APKs
         run: |
           mkdir -p out
-          cp app/build/outputs/apk/debug/app-debug.apk out/mpc.apk
-          cp pop/build/outputs/apk/debug/pop-debug.apk out/pop.apk
+          cp app/build/outputs/apk/release/app-release.apk out/mpc.apk
+          cp pop/build/outputs/apk/release/pop-release.apk out/pop.apk
           ls -lh out
 
       - name: Upload build artifact
@@ -97,6 +97,12 @@ jobs:
 
           下のファイルをタップしてダウンロードし、開いてインストールしてください。
           初回は「提供元不明のアプリ」の許可を求められます。
+
+          配布用のページ（QR コードつき）:
+          https://ytakaiclimb-cell.github.io/Free/install/
+
+          パソコン / iPhone 用のブラウザ版:
+          https://ytakaiclimb-cell.github.io/Free/
 
           直リンク:
           https://github.com/${{ github.repository }}/releases/latest/download/pop.apk

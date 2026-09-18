@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>POP INSTA をスマホに入れる</title>
+<meta name="description" content="A4 の POP をインスタの投稿サイズに変換する Android アプリのインストール手順です。">
+<meta name="theme-color" content="#121214">
+<link rel="icon" href="../icon.svg">
+<link rel="stylesheet" href="../style.css">
+<style>
+  .page { max-width: 720px; margin: 0 auto; padding: 8px 20px 48px; }
+  .page h2 { font-size: 22px; margin: 0 0 6px; }
+  .page .sub { color: var(--dim); font-size: 13px; margin: 0 0 24px; line-height: 1.7; }
+  .card { background: var(--panel); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+  .get { display: block; text-align: center; background: var(--accent); color: var(--shell);
+         font-size: 17px; font-weight: 700; text-decoration: none; border-radius: 16px;
+         padding: 18px 16px; }
+  .qr { display: flex; gap: 18px; align-items: center; }
+  .qr img { width: 132px; height: 132px; background: #fff; border-radius: 12px; padding: 8px; }
+  .qr p { margin: 0; font-size: 12px; color: var(--dim); line-height: 1.8; }
+  ol { margin: 0; padding-left: 1.3em; line-height: 2; font-size: 14px; }
+  ol small { color: var(--dim); font-size: 12px; }
+  h3 { font-size: 13px; letter-spacing: 1px; margin: 0 0 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  td { padding: 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td:first-child { color: var(--dim); width: 34%; }
+  tr:last-child td { border-bottom: 0; }
+  .back { display: inline-block; margin-top: 8px; color: var(--accent); font-size: 13px; }
+  @media (max-width: 480px) { .qr { flex-direction: column; text-align: center; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title">
+    <h1>POP → INSTAGRAM</h1>
+    <p>Android アプリ版</p>
+  </div>
+  <a class="ghost" href="../">ブラウザで使う</a>
+</header>
+
+<div class="page">
+  <h2>スマホに入れる</h2>
+  <p class="sub">
+    A4 で作った POP を、インスタの投稿サイズ（1:1 / 4:5 / 9:16）に切り出すアプリです。<br>
+    Google Play には出していないので、下のファイルから直接インストールします。
+  </p>
+
+  <a class="get" href="https://github.com/ytakaiclimb-cell/Free/releases/latest/download/pop.apk">
+    pop.apk をダウンロード
+  </a>
+  <p class="sub" style="text-align:center; margin: 10px 0 24px">このリンクは常に最新版を指します</p>
+
+  <div class="card qr">
+    <img src="qr.svg" alt="このページの QR コード">
+    <p>
+      配る相手には、このコードを読んでもらってください。<br>
+      スマホのカメラを向けるだけでこのページが開きます。
+    </p>
+  </div>
+
+  <div class="card">
+    <h3>入れかた</h3>
+    <ol>
+      <li>上のボタンをタップしてダウンロード</li>
+      <li>通知（またはブラウザのダウンロード一覧）からファイルを開く</li>
+      <li>「提供元不明のアプリ」の許可を求められたら許可する<br>
+        <small>「この端末に、このブラウザから入れてよい」という意味の確認です</small></li>
+      <li>「インストール」をタップ</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h3>知っておくこと</h3>
+    <table>
+      <tr><td>更新するとき</td><td>同じリンクから落として上書きするだけです。アンインストールは要りません</td></tr>
+      <tr><td>権限</td><td>求めません。写真の選択と、自分が保存した画像しか触りません</td></tr>
+      <tr><td>通信</td><td>しません。変換はすべて端末の中で終わります</td></tr>
+      <tr><td>対応</td><td>Android 10 以降</td></tr>
+      <tr><td>iPhone / PC</td><td>アプリはありません。<a href="../">ブラウザ版</a>が同じことをします</td></tr>
+    </table>
+  </div>
+
+  <a class="back" href="../">← ブラウザ版を開く</a>
+</div>
+
+</body>
+</html>
