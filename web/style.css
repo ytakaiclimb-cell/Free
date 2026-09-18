@@ -165,6 +165,52 @@ main {
 
 .swatch[aria-pressed="true"] { background: var(--panel-hi); border-color: var(--accent); color: var(--text); }
 
+.strip-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--dim);
+  margin-top: 4px;
+}
+
+.strip-head span { flex: 1; }
+
+.strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px 2px 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.strip .cell {
+  position: relative;
+  flex: 0 0 auto;
+  padding: 3px;
+  background: var(--panel);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.strip .cell[aria-pressed="true"] { border-color: var(--accent); background: var(--panel-hi); }
+.strip .shot { width: 56px; height: 56px; border-radius: 7px; }
+
+.strip .tag {
+  position: absolute;
+  left: 5px;
+  bottom: 5px;
+  font-size: 9px;
+  font-style: normal;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: rgba(18, 18, 20, 0.78);
+  color: var(--text);
+}
+
 .slider-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
 .slider-row .label { margin: 0; }
 .slider-row output { font-size: 12px; font-weight: 700; min-width: 34px; text-align: right; }

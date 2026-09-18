@@ -50,6 +50,12 @@
   </section>
 
   <section class="panel">
+    <div class="strip-head" id="stripHead" hidden>
+      <span id="stripCount">2 件</span>
+      <button class="ghost" id="clear">クリア</button>
+    </div>
+    <div class="strip" id="strip" hidden></div>
+
     <p class="label">サイズ</p>
     <div class="row" id="formats">
       <button class="chip" data-format="square"><b>1:1</b><span>正方形</span></button>
@@ -96,6 +102,10 @@
       <button class="solid primary" id="share" disabled hidden>Instagram / 写真に保存</button>
     </div>
 
+    <div class="actions" id="batchRow" hidden>
+      <button class="solid primary" id="batch" disabled>すべて書き出す</button>
+    </div>
+
     <p class="hint" id="phoneHint" hidden>
       <b>写真アプリ（ギャラリー）に入れるには</b>「Instagram / 写真に保存」を押して、
       出てきた一覧から<b>「画像を保存」</b>（動画なら「ビデオを保存」）を選んでください。
@@ -113,9 +123,9 @@
 
 <!-- Two inputs, not one: an accept list that mixes images with PDFs makes
      Android offer the file browser only, with no way to reach the gallery. -->
-<input type="file" id="fileImage" accept="image/*" hidden>
-<input type="file" id="filePdf" accept="application/pdf,.pdf" hidden>
-<input type="file" id="fileVideo" accept="video/*" hidden>
+<input type="file" id="fileImage" accept="image/*" multiple hidden>
+<input type="file" id="filePdf" accept="application/pdf,.pdf" multiple hidden>
+<input type="file" id="fileVideo" accept="video/*" multiple hidden>
 <div class="toast" id="toast"></div>
 
 <script type="module" src="app.js?v=__BUILD__"></script>
