@@ -1,6 +1,8 @@
 // POP → INSTAGRAM, the browser edition of the Android app in this repo.
 // Same geometry, same backdrops, same output: a 1080 px wide post.
 
+import { convertVideo, videoSupported } from './video.js?v=__BUILD__';
+
 const FORMATS = {
   square:   { key: 'square',   ratio: '1:1',  label: '正方形',     width: 1080, height: 1080 },
   portrait: { key: 'portrait', ratio: '4:5',  label: '縦長',       width: 1080, height: 1350 },
@@ -15,8 +17,13 @@ const CREAM = '#f2f0e6';
 const INK = '#141416';
 
 const state = {
-  source: null,     // full resolution canvas
+  kind: 'image',    // 'image' or 'video'
+  source: null,     // full resolution canvas, or the <video> element
   preview: null,    // smaller copy, redrawn on every gesture
+  srcW: 0,
+  srcH: 0,
+  duration: 0,
+  made: null,       // the last exported video, kept so sharing stays one tap
   blurTile: null,   // tiny cover-cropped copy, stretched into the blur backdrop
   paper: '#ffffff',
   name: '',
@@ -29,6 +36,8 @@ const state = {
   margin: 0.04,
   layout: { zoom: 1, x: 0, y: 0 },
   busy: false,
+  progress: -1,
+  file: null,       // what was opened, kept for the video soundtrack
 };
 
 // Stamped by the publishing workflow; "dev" when served straight from disk.
@@ -36,10 +45,11 @@ const rawBuild = document.body.getAttribute('data-build') || '';
 const BUILD = /^[0-9]/.test(rawBuild) ? rawBuild : 'dev';
 
 const els = {};
-for (const id of ['subtitle', 'openPhoto', 'openPdf', 'openPhotoBig', 'openPdfBig',
-  'fileImage', 'filePdf', 'stage', 'empty', 'preview', 'formats',
+for (const id of ['subtitle', 'openPhoto', 'openPdf', 'openVideo',
+  'openPhotoBig', 'openPdfBig', 'openVideoBig',
+  'fileImage', 'filePdf', 'fileVideo', 'stage', 'empty', 'preview', 'media', 'formats',
   'modes', 'backdrops', 'margin', 'marginOut', 'pages', 'pageLabel', 'prevPage', 'nextPage',
-  'reset', 'saveAll', 'save', 'share', 'toast']) {
+  'reset', 'saveAll', 'save', 'share', 'toast', 'progress', 'progressFill']) {
   els[id] = document.getElementById(id);
 }
 
@@ -127,14 +137,19 @@ function paperColor(src) {
 }
 
 /** A 48 px cover-cropped copy; stretched back up it reads as a blur. */
-function blurTile(src, aspect) {
+function blurTile(src, aspect, srcW, srcH, into) {
   const w = 48;
   const h = Math.max(1, Math.round(w / aspect));
-  const c = canvasOf(w, h);
+  const c = into && into.width === w && into.height === h ? into : canvasOf(w, h);
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, w, h);
-  const small = reduce(src, w * 6);
+  // A canvas is reduced in steps first; a video frame is already small enough
+  // to take in one draw, and has to be, since this runs every frame.
+  const small = src instanceof HTMLCanvasElement
+    ? reduce(src, w * 6)
+    : { width: srcW, height: srcH, drawable: src };
+  const drawable = small.drawable || small;
   const sa = small.width / small.height;
   const oa = w / h;
   let sx = 0, sy = 0, sw = small.width, sh = small.height;
@@ -147,8 +162,13 @@ function blurTile(src, aspect) {
   }
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(small, sx, sy, sw, sh, 0, 0, w, h);
+  ctx.drawImage(drawable, sx, sy, sw, sh, 0, 0, w, h);
   return c;
+}
+
+function rebuildTile(aspect, reuse) {
+  if (!state.srcW) return null;
+  return blurTile(state.source, aspect, state.srcW, state.srcH, reuse);
 }
 
 function backdropColor() {
@@ -186,16 +206,20 @@ function compose(ctx, W, H, src, tile, p) {
 }
 
 function draw() {
-  if (!state.source) return;
+  if (!state.srcW) return;
   const c = els.preview;
   const ctx = c.getContext('2d');
-  const p = place(state.layout, state.source.width, state.source.height,
+  // The blur follows a moving picture, so it is rebuilt from the live frame.
+  if (state.kind === 'video' && state.backdrop === 'blur') {
+    state.blurTile = rebuildTile(state.format.width / state.format.height, state.blurTile);
+  }
+  const p = place(state.layout, state.srcW, state.srcH,
     c.width, c.height, state.margin, state.mode);
   compose(ctx, c.width, c.height, state.preview, state.blurTile, p);
 }
 
 function fitPreview() {
-  if (!state.source) return;
+  if (!state.srcW) return;
   const f = state.format;
   const box = els.stage.getBoundingClientRect();
   const wide = window.innerWidth >= 900;
@@ -218,14 +242,18 @@ function fitPreview() {
 function renderTo(format) {
   const c = canvasOf(format.width, format.height);
   const ctx = c.getContext('2d');
-  const tile = state.backdrop === 'blur'
-    ? blurTile(state.source, format.width / format.height)
-    : null;
-  const p = place(state.layout, state.source.width, state.source.height,
-    format.width, format.height, state.margin, state.mode);
-  const src = reduce(state.source, Math.round(p.width));
-  compose(ctx, format.width, format.height, src, tile, p);
+  paintFrame(ctx, format.width, format.height, true);
   return c;
+}
+
+/** One composed frame at any size — the preview, a JPEG, or a video frame. */
+function paintFrame(ctx, W, H, fullResolution) {
+  const tile = state.backdrop === 'blur' ? rebuildTile(W / H, null) : null;
+  const p = place(state.layout, state.srcW, state.srcH, W, H, state.margin, state.mode);
+  const src = fullResolution && state.kind === 'image'
+    ? reduce(state.source, Math.round(p.width))
+    : state.source;
+  compose(ctx, W, H, src, tile, p);
 }
 
 // ---- loading ---------------------------------------------------------------
@@ -300,10 +328,36 @@ async function showPdfPage(index) {
 }
 
 function adopt(canvas, name) {
+  stopVideo();
+  state.kind = 'image';
   state.source = canvas;
   state.preview = reduce(canvas, PREVIEW_EDGE);
-  state.paper = paperColor(canvas);
-  state.blurTile = blurTile(canvas, state.format.width / state.format.height);
+  state.srcW = canvas.width;
+  state.srcH = canvas.height;
+  state.duration = 0;
+  settle(name);
+}
+
+function adoptVideo(name) {
+  const media = els.media;
+  state.kind = 'video';
+  state.source = media;
+  state.preview = media;
+  state.srcW = media.videoWidth;
+  state.srcH = media.videoHeight;
+  state.duration = Number.isFinite(media.duration) ? media.duration : 0;
+  state.pdf = null;
+  state.pageCount = 1;
+  state.pageIndex = 0;
+  settle(name);
+  media.play().catch(() => {});
+  startVideoLoop();
+}
+
+function settle(name) {
+  state.made = null;
+  state.paper = state.srcW ? paperColor(state.source) : '#ffffff';
+  state.blurTile = rebuildTile(state.format.width / state.format.height, null);
   state.layout = { zoom: 1, x: 0, y: 0 };
   state.name = name || state.name;
   els.preview.hidden = false;
@@ -313,19 +367,76 @@ function adopt(canvas, name) {
   draw();
 }
 
+let videoLoop = 0;
+function startVideoLoop() {
+  cancelAnimationFrame(videoLoop);
+  const step = () => {
+    if (state.kind !== 'video') return;
+    draw();
+    videoLoop = requestAnimationFrame(step);
+  };
+  videoLoop = requestAnimationFrame(step);
+}
+
+function stopVideo() {
+  cancelAnimationFrame(videoLoop);
+  const media = els.media;
+  if (media && media.src) {
+    media.pause();
+    URL.revokeObjectURL(media.src);
+    media.removeAttribute('src');
+    media.load();
+  }
+}
+
+function loadVideo(file) {
+  return new Promise((resolve, reject) => {
+    const media = els.media;
+    stopVideo();
+    media.loop = true;
+    media.muted = true;
+    media.playsInline = true;
+    media.preload = 'auto';
+    media.onloadeddata = () => {
+      media.onloadeddata = null;
+      media.onerror = null;
+      if (!media.videoWidth) { reject(new Error('映像を読めません')); return; }
+      resolve();
+    };
+    media.onerror = () => {
+      media.onloadeddata = null;
+      media.onerror = null;
+      reject(new Error('この形式の動画は開けません'));
+    };
+    media.src = URL.createObjectURL(file);
+    media.load();
+  });
+}
+
 async function openFile(file) {
   if (!file || state.busy) return;
   setBusy(true);
   notice(null);
   try {
     const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
-    if (isPdf) {
+    const isVideo = (file.type && file.type.indexOf('video/') === 0) ||
+      /\.(mp4|mov|m4v|webm|avi|3gp|mkv)$/i.test(file.name);
+    if (isVideo) {
+      if (!videoSupported()) {
+        throw new Error('この端末のブラウザは動画の書き出しに未対応です');
+      }
+      state.file = file;
+      await loadVideo(file);
+      adoptVideo(file.name);
+      if (state.duration > 180) toast('長い動画です。書き出しに時間がかかります');
+    } else if (isPdf) {
       await loadPdf(file);
     } else {
       state.pdf = null;
       state.pageCount = 1;
       state.pageIndex = 0;
       state.name = file.name;
+      state.file = file;
       adopt(cap(await decodeImage(file)), file.name);
     }
   } catch (err) {
@@ -381,15 +492,80 @@ const canShareFiles = (() => {
   }
 })();
 
+function setProgress(value) {
+  state.progress = value;
+  const running = value >= 0;
+  els.progress.hidden = !running;
+  els.progressFill.style.width = `${Math.round(Math.max(0, value) * 100)}%`;
+  if (running) {
+    els.subtitle.textContent = `書き出し中… ${Math.round(value * 100)}%`;
+    els.subtitle.classList.remove('warn');
+  }
+}
+
+async function exportVideo() {
+  if (state.kind !== 'video' || state.busy || !state.file) return;
+  const format = state.format;
+  cancelAnimationFrame(videoLoop);
+  setBusy(true);
+  setProgress(0);
+  notice(null);
+  // Encoding follows playback, and playback stops when a phone sleeps.
+  let wakeLock = null;
+  try {
+    if (navigator.wakeLock) wakeLock = await navigator.wakeLock.request('screen');
+  } catch (err) { /* not available; the warning in the hint covers it */ }
+  try {
+    const result = await convertVideo({
+      file: state.file,
+      video: els.media,
+      width: format.width,
+      height: format.height,
+      paint: (ctx, W, H) => paintFrame(ctx, W, H, false),
+      onProgress: setProgress,
+    });
+    const name = outputName(format).replace(/\.jpg$/, '.mp4');
+    state.made = new File([result.blob], name, { type: 'video/mp4' });
+    if (!result.instagramReady) {
+      notice(`この端末では ${result.codec} でしか書き出せませんでした。` +
+        'Instagram が受け付けない場合があります');
+    }
+    if (canShareFiles) {
+      toast('書き出しました。「Instagram へ」で投稿できます');
+    } else {
+      download(state.made);
+      toast(result.audio ? '書き出しました（音つき）' : '書き出しました（音なし）');
+    }
+  } catch (err) {
+    notice(`書き出せませんでした（${(err && err.message) || err}）`);
+  } finally {
+    if (wakeLock) wakeLock.release().catch(() => {});
+    setProgress(-1);
+    setBusy(false);
+    els.media.loop = true;
+    els.media.play().catch(() => {});
+    startVideoLoop();
+  }
+}
+
 function saveFormats(formats) {
-  if (!state.source) return;
+  if (!state.srcW) return;
+  if (state.kind === 'video') { exportVideo(); return; }
   const files = filesFor(formats);
   files.forEach(download);
   toast(files.length === 1 ? '保存しました' : `${files.length} 枚保存しました`);
 }
 
 function shareFormats(formats) {
-  if (!state.source) return;
+  if (!state.srcW) return;
+  if (state.kind === 'video') {
+    // The file is already made: sharing has to happen inside this very click,
+    // or Safari refuses it.
+    if (state.made && canShareFiles) navigator.share({ files: [state.made], title: 'POP' }).catch(() => {});
+    else if (state.made) download(state.made);
+    else exportVideo();
+    return;
+  }
   const files = filesFor(formats);
   if (canShareFiles) {
     navigator.share({ files, title: 'POP' }).catch(() => {});
@@ -420,10 +596,15 @@ function setBusy(on) {
 }
 
 function refresh() {
-  const ready = !!state.source && !state.busy;
-  els.subtitle.textContent = state.busy
-    ? '読み込み中…'
-    : (problem || state.name || `A4 の POP を投稿サイズに ・ ${BUILD}`);
+  const ready = !!state.srcW && !state.busy;
+  const video = state.kind === 'video';
+  if (state.progress >= 0) {
+    els.subtitle.textContent = `書き出し中… ${Math.round(state.progress * 100)}%`;
+  } else {
+    els.subtitle.textContent = state.busy
+      ? '読み込み中…'
+      : (problem || state.name || `A4 の POP を投稿サイズに ・ ${BUILD}`);
+  }
   els.subtitle.classList.toggle('warn', !!problem);
 
   for (const button of els.formats.children) {
@@ -440,11 +621,14 @@ function refresh() {
 
   els.marginOut.textContent = `${Math.round(state.margin * 100)}%`;
   els.reset.disabled = !ready;
-  els.saveAll.disabled = !ready;
+  els.saveAll.disabled = !ready || video;
+  els.saveAll.textContent = video ? '動画は 1 サイズずつ' : '3サイズまとめて保存';
   els.save.disabled = !ready;
-  els.share.disabled = !ready;
+  els.save.textContent = video ? 'MP4 で書き出す' : '保存';
+  els.share.disabled = !ready || (video && !state.made);
   els.share.hidden = !canShareFiles;
-  for (const button of [els.openPhoto, els.openPdf, els.openPhotoBig, els.openPdfBig]) {
+  for (const button of [els.openPhoto, els.openPdf, els.openVideo,
+    els.openPhotoBig, els.openPdfBig, els.openVideoBig]) {
     if (button) button.disabled = state.busy;
   }
 
@@ -470,11 +654,11 @@ function setColorDots() {
 // ---- interaction -----------------------------------------------------------
 
 function transform(dx, dy, zoomBy) {
-  if (!state.source) return;
+  if (!state.srcW) return;
   const f = state.format;
   state.layout = normalize(
     { zoom: state.layout.zoom * zoomBy, x: state.layout.x + dx, y: state.layout.y + dy },
-    state.source.width, state.source.height, f.width, f.height, state.margin, state.mode,
+    state.srcW, state.srcH, f.width, f.height, state.margin, state.mode,
   );
   draw();
 }
@@ -541,11 +725,14 @@ function on(element, type, handler, options) {
 function wireControls() {
   const pickImage = () => { if (!state.busy) els.fileImage.click(); };
   const pickPdf = () => { if (!state.busy) els.filePdf.click(); };
+  const pickVideo = () => { if (!state.busy) els.fileVideo.click(); };
   on(els.openPhoto, 'click', pickImage);
   on(els.openPhotoBig, 'click', pickImage);
   on(els.openPdf, 'click', pickPdf);
   on(els.openPdfBig, 'click', pickPdf);
-  for (const input of [els.fileImage, els.filePdf]) {
+  on(els.openVideo, 'click', pickVideo);
+  on(els.openVideoBig, 'click', pickVideo);
+  for (const input of [els.fileImage, els.filePdf, els.fileVideo]) {
     on(input, 'change', () => {
       const file = input.files && input.files[0];
       input.value = '';
@@ -558,8 +745,9 @@ function wireControls() {
     if (!button) return;
     state.format = FORMATS[button.dataset.format];
     state.layout = { zoom: 1, x: 0, y: 0 };
-    if (state.source) {
-      state.blurTile = blurTile(state.source, state.format.width / state.format.height);
+    state.made = null;
+    if (state.srcW) {
+      state.blurTile = rebuildTile(state.format.width / state.format.height, null);
     }
     refresh();
     fitPreview();
@@ -571,6 +759,7 @@ function wireControls() {
     if (!button) return;
     state.mode = button.dataset.mode;
     state.layout = { zoom: 1, x: 0, y: 0 };
+    state.made = null;
     refresh();
     draw();
   });
@@ -579,15 +768,16 @@ function wireControls() {
     const button = e.target.closest('[data-backdrop]');
     if (!button) return;
     state.backdrop = button.dataset.backdrop;
+    state.made = null;
     refresh();
     draw();
   });
 
   els.margin.addEventListener('input', () => {
     state.margin = Number(els.margin.value) / 100;
-    if (state.source) {
+    if (state.srcW) {
       const f = state.format;
-      state.layout = normalize(state.layout, state.source.width, state.source.height,
+      state.layout = normalize(state.layout, state.srcW, state.srcH,
         f.width, f.height, state.margin, state.mode);
     }
     refresh();

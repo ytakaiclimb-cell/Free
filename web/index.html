@@ -20,6 +20,7 @@
   </div>
   <button class="ghost" id="openPhoto">写真</button>
   <button class="ghost" id="openPdf">PDF</button>
+  <button class="ghost" id="openVideo">動画</button>
 </header>
 
 <main>
@@ -28,6 +29,7 @@
       <div class="empty-actions">
         <button class="solid primary" id="openPhotoBig">写真から</button>
         <button class="solid" id="openPdfBig">PDF から</button>
+        <button class="solid" id="openVideoBig">動画から</button>
       </div>
       <p class="lead">A4 で作った POP を、そのまま<br>インスタの投稿サイズに切り出します。</p>
       <p class="sub">写真でも、Word や Canva から書き出した PDF でも読み込めます。<br>この画面にドラッグしても開けます。</p>
@@ -44,6 +46,7 @@
       </svg>
     </div>
     <canvas id="preview" hidden></canvas>
+    <video id="media" playsinline muted loop hidden></video>
   </section>
 
   <section class="panel">
@@ -86,6 +89,8 @@
       <button class="ghost" id="saveAll" disabled>3サイズまとめて保存</button>
     </div>
 
+    <div class="bar" id="progress" hidden><i id="progressFill"></i></div>
+
     <div class="actions">
       <button class="solid" id="save" disabled>保存</button>
       <button class="solid primary" id="share" disabled hidden>共有 / Instagram へ</button>
@@ -93,6 +98,8 @@
 
     <p class="hint" id="hint">
       プレビューはドラッグで移動、ピンチ（PC はホイール）で拡大。ダブルタップで位置が戻ります。<br>
+      動画も同じように変換できます。音はそのまま入ります。書き出しには動画の長さと
+      同じくらいかかるので、その間は画面を消さないでください。<br>
       Android アプリ版もあります → <a href="install/">スマホに入れる</a>
     </p>
   </section>
@@ -102,6 +109,7 @@
      Android offer the file browser only, with no way to reach the gallery. -->
 <input type="file" id="fileImage" accept="image/*" hidden>
 <input type="file" id="filePdf" accept="application/pdf,.pdf" hidden>
+<input type="file" id="fileVideo" accept="video/*" hidden>
 <div class="toast" id="toast"></div>
 
 <script type="module" src="app.js?v=__BUILD__"></script>

@@ -56,6 +56,8 @@ header p.warn { color: var(--accent); white-space: normal; }
 
 header .title { flex: 1; min-width: 0; }
 
+header .ghost { padding: 9px 8px; font-size: 11px; }
+
 main {
   display: grid;
   gap: 18px;
@@ -93,7 +95,16 @@ main {
 
 .empty { width: 100%; text-align: center; padding: 8px 4px 0; }
 
-.empty-actions { display: grid; gap: 10px; grid-auto-flow: column; grid-auto-columns: 1fr; }
+.empty-actions {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+}
+
+#media { display: none; }
+
+.bar { height: 4px; background: var(--panel-hi); border-radius: 999px; overflow: hidden; margin-top: 12px; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.15s; }
 
 .empty .lead { font-size: 14px; line-height: 1.7; margin: 18px 0 6px; }
 .empty .sub { font-size: 11px; line-height: 1.7; color: var(--dim); margin: 0 0 18px; }

@@ -50,7 +50,7 @@ jobs:
           # A fresh query string per deploy, so a browser can never pair a new
           # page with a stale script. The same stamp is shown in the header.
           STAMP="${GITHUB_RUN_NUMBER}.$(echo "$GITHUB_SHA" | cut -c1-7)"
-          sed -i "s/__BUILD__/${STAMP}/g" web/index.html web/install/index.html
+          sed -i "s/__BUILD__/${STAMP}/g" web/index.html web/install/index.html web/app.js
           grep -o "v=[0-9][^\"]*" web/index.html | head -2
 
       - name: Upload the site
